@@ -22,9 +22,9 @@ public class WebFormAssertion {
     public void environmentSetup(){
 
 //        driver = new FirefoxDriver(new FirefoxOptions().addArguments("-private"));                                    //Firefox Private Browsing
-        driver = new ChromeDriver(new ChromeOptions().addArguments("incognito"));
+//        driver = new ChromeDriver(new ChromeOptions().addArguments("incognito"));                                     //Google Chrome Incognito
 
-//        driver = new ChromeDriver();                                                                                  //Normal Chrome Window
+        driver = new ChromeDriver();                                                                                    //Normal Chrome Window
         driver.manage().window().maximize();
         driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(30));
 
