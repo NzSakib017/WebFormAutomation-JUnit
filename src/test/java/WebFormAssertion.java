@@ -1,103 +1,128 @@
 import org.junit.jupiter.api.*;
-import org.openqa.selenium.By;
-import org.openqa.selenium.Keys;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.firefox.FirefoxOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
+import java.io.File;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
+import java.util.NoSuchElementException;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class WebFormAssertion {
     WebDriver driver;
     WebDriverWait explicitWait;
     @BeforeAll
-    public void environmentSetup(){
-
-//        driver = new FirefoxDriver(new FirefoxOptions().addArguments("-private"));                                    //Firefox Private Browsing
-//        driver = new ChromeDriver(new ChromeOptions().addArguments("incognito"));                                     //Google Chrome Incognito
-
-        driver = new ChromeDriver();                                                                                    //Normal Chrome Window
+    public void environmentSetup() {
+        driver = getBrowserDriver("chrome", false);
         driver.manage().window().maximize();
         driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(30));
 
         driver.get("https://www.digitalunite.com/practice-webform-learners");
         driver.findElement(By.id("onetrust-reject-all-handler")).click();
-//        delayedElementHandler(By.cssSelector(".spb-popup-main-wrapper"),30);
-//        driver.findElement(By.cssSelector(".block-digitalunitepopup-modal-close.spb_close")).click();
     }
 
-    public void delayedElementHandler(By WebElement, int second){
-        explicitWait = new WebDriverWait(driver,Duration.ofSeconds(second));
-        explicitWait.until(ExpectedConditions.presenceOfElementLocated(WebElement));
+    private WebDriver getBrowserDriver(final String browserName, final boolean inPrivate) {
+        switch(browserName) {
+            case "firefox": {
+                FirefoxOptions firefoxOptions = new FirefoxOptions();
+                if (inPrivate) {
+                    firefoxOptions.addArguments("-private");
+                }
+                return new FirefoxDriver(firefoxOptions);
+            }
+            default: {
+                ChromeOptions chromeOptions = new ChromeOptions();
+                if (inPrivate) {
+                    chromeOptions.addArguments("incognito");
+                }
+                return new ChromeDriver(chromeOptions);
+            }
+        }
     }
 
     @DisplayName("Test Webpage Loading")
     @Test
-    public void getTitle() {
+    public void testTitle() {
         driver.get("https://www.digitalunite.com/practice-webform-learners");
         String receivedTitle = driver.getTitle();
         System.out.println(receivedTitle);
         Assertions.assertTrue(receivedTitle.contains("Digital Unite"));
-//        Assertions.assertEquals(receivedTitle,"Digital Unite");
     }
 
     @DisplayName("Web Form Input & Submit")
     @Test
-    public void formSubmission() throws InterruptedException {
+    public void testFormSubmission() throws InterruptedException, URISyntaxException {
         driver.get("https://www.digitalunite.com/practice-webform-learners");
 
-        delayedElementHandler(By.cssSelector(".spb-popup-main-wrapper"),30);
-        boolean popupFound = driver.findElement(By.cssSelector(".spb-popup-main-wrapper")).isDisplayed();
+        if (isPopupFound(30))
+            findElementByCssSelector(".block-digitalunitepopup-modal-close").click();
 
-        if (popupFound)
-            driver.findElement(By.cssSelector(".block-digitalunitepopup-modal-close")).click();
-        else
-        {
-            List<WebElement> textBoxElement = new ArrayList<WebElement>();
-            textBoxElement.add(driver.findElement(By.id("edit-name")));
-            textBoxElement.add(driver.findElement(By.id("edit-number")));
-            textBoxElement.add(driver.findElement(By.id("edit-email")));
-            textBoxElement.add(driver.findElement(By.id("edit-tell-us-a-bit-about-yourself-")));
+        updateValueOfElement(findElementById("edit-name"), "Sakib", 2000);
+        updateValueOfElement(findElementById("edit-number"), "+8801719637539", 500);
 
-            textBoxElement.get(0).sendKeys("Sakib");
-            Thread.sleep(2000);
-            textBoxElement.get(1).sendKeys("+8801719637539");
-            Thread.sleep(500);
+        findElementByCssSelector("label[for = 'edit-agnew-30-40']").click();
+        Thread.sleep(2000);
 
-            driver.findElement(By.cssSelector("label[for = 'edit-agnew-30-40']")).click();                              //AGE Button Click
-            Thread.sleep(2000);
+        findElementById("edit-date").click();
+        updateValueOfElement(findElementById("edit-date"), Keys.CONTROL + "A" + Keys.DELETE);
+        String currentDate = new SimpleDateFormat("ddMMMyyyy").format(new Date());
+        updateValueOfElement(findElementById("edit-date"), currentDate + Keys.ARROW_RIGHT + currentDate.substring(5), 2000);
 
-            driver.findElement(By.id("edit-date")).click();
-            driver.findElement(By.id("edit-date")).sendKeys(Keys.CONTROL + "A" + Keys.DELETE);
-            String currentDate = new SimpleDateFormat("ddMMMyyyy").format(new Date());
-            driver.findElement(By.id("edit-date")).sendKeys(currentDate + Keys.ARROW_RIGHT + currentDate.substring(5));
-            Thread.sleep(2000);
+        updateValueOfElement(findElementById("edit-email"), "testwebform@junit.com", 2000);
+        updateValueOfElement(findElementById("edit-tell-us-a-bit-about-yourself-"),"This a web form submission automation testing.", 3000);
 
-            textBoxElement.get(2).sendKeys("testwebform@junit.com");
-            Thread.sleep(2000);
-            textBoxElement.get(3).sendKeys("This a web form submission automation testing.");
-            Thread.sleep(3000);
+        WebElement submitButton = findElementById("edit-submit");
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        js.executeScript("arguments[0].scrollIntoView();", submitButton);
 
-            driver.findElement(By.id("edit-uploadocument-upload")).sendKeys("C:\\Users\\nzsak\\Desktop\\WebFormAutomationFile.xlsx");
-            Thread.sleep(10000);
+        URL resource = WebFormAssertion.class.getResource("WebFormAutomationFile.xlsx");
+        File file = new File(resource.toURI());
+        driver.findElement(By.id("edit-uploadocument-upload")).sendKeys(file.getAbsolutePath());
+        Thread.sleep(10000);
 
-            driver.findElement(By.id("edit-age")).click();                                                              //Check Box Button Click
-        }
-
-
-        driver.findElement(By.id("edit-submit")).click();                                                               //SUBMIT Button Click
+        WebElement completionCheckbox = findElementById("edit-age");
+        completionCheckbox.click();
+        submitButton.click();
 
         String confirmationMessage = driver.findElement(By.xpath("//h1[contains(text(),'Thank you for your submission!')]")).getText();
         Assertions.assertEquals(confirmationMessage,"Thank you for your submission!");
+    }
 
+    private boolean isPopupFound(int second) {
+        explicitWait = new WebDriverWait(driver,Duration.ofSeconds(second));
+        By webElement = By.cssSelector(".spb-popup-main-wrapper");
+
+        try {
+            explicitWait.until(ExpectedConditions.presenceOfElementLocated(webElement));
+            return driver.findElement(webElement).isDisplayed();
+        } catch (NoSuchElementException | TimeoutException noSuchElementException) {
+            return false;
+        }
+    }
+
+    private WebElement findElementById(final String id) {
+        return driver.findElement(By.id(id));
+    }
+
+    private WebElement findElementByCssSelector(final String cssSelector) {
+        return driver.findElement(By.cssSelector(cssSelector));
+    }
+
+    private void updateValueOfElement(final WebElement element, final String value, final int delay) throws InterruptedException {
+        updateValueOfElement(element, value);
+        Thread.sleep(delay);
+    }
+
+    private void updateValueOfElement(final WebElement element, final String value) {
+        element.sendKeys(value);
     }
 
     @AfterAll
